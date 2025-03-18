@@ -1,0 +1,9 @@
+# create a dev conda environment with: `make create_env` or `conda env create -f environment.yml`
+name: habmot
+channels:
+- conda-forge
+dependencies:
+- biorbd >=1.11.1
+- matplotlib
+- bioviz
+- numpy

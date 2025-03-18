@@ -23,7 +23,7 @@ The easiest and most efficient way is to use an anaconda virtual environment.
 - Install `habmot` dependencies with:
 
 ```bash
-pip install . && pip uninstall -y habmot
+conda env create -f environment.yml
 ```
 
 ## Testing your code
