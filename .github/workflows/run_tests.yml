@@ -41,7 +41,6 @@ jobs:
 
       - name: Run tests with code coverage
         run: pytest -v --color=yes --cov-branch --cov-report=xml --cov=habmot tests
-        if: matrix.os == 'ubuntu-latest'
         
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
