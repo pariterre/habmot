@@ -1,0 +1,3 @@
+[submodule "external/biobuddy"]
+	path = external/biobuddy
+	url = https://github.com/pariterre/biobuddy.git
