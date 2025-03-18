@@ -1,0 +1,42 @@
+[build-system]
+requires = [
+    "setuptools", 
+    "numpy",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name =  "habmot"
+description = "This is a kinematic reconstruction project that uses XSens as data inputs"
+dynamic = ["version"]
+authors = [
+    {name = "Annie Pouliot", email = "pariterre@hotmail.com"},
+    {name = "Pariterre", email = "pariterre@hotmail.com"},
+]
+readme = "README.md"
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python"
+]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy", 
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.urls]
+Documentation = "https://github.com/cr-crme/habmot/tree/main#readme"
+Source = "https://github.com/cr-crme/habmot"
+Tracker = "https://github.com/cr-crme/habmot/issues"
+
+[tool.setuptools]
+packages = ["habmot"]
+
+[tool.setuptools.dynamic]
+version = {attr = "habmot.__version__"}
+
+[tool.pytest.ini_options]
+pythonpath = "."
+testpaths = "tests"

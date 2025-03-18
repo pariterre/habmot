@@ -1,0 +1,60 @@
+name: Run the tests
+
+on: [pull_request]
+
+env:
+  EXAMPLES_FOLDER: examples
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, macos-13, windows-latest]
+        include:
+          - os: ubuntu-latest
+            label: linux-64
+          - os: macos-latest
+            label: osx-arm64
+          - os: macos-13
+            label: osx-intel
+          - os: windows-latest
+            label: win-64
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '>=3.10'
+
+      - name: Install dependencies
+        run: pip install . && pip uninstall -y habmot
+
+      - name: Install test dependencies
+        run: pip install pytest pytest-cov codecov
+
+      - name: Run tests with code coverage
+        run: pytest -v --color=yes --cov-branch --cov-report=xml --cov=habmot tests
+        if: matrix.os == 'ubuntu-latest'
+        
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: true
+          verbose: true
+        if: matrix.os == 'ubuntu-latest'
+          
+      - name: Test installed version of python
+        run: | 
+          BASE_FOLDER=`pwd`
+          pip install .
+          cd
+          python -c "import habmot"
+          cd $BASE_FOLDER
+
