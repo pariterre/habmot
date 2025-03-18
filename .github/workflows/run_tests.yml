@@ -48,6 +48,7 @@ jobs:
         with:
           fail_ci_if_error: true
           verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
         if: matrix.os == 'ubuntu-latest'
           
       - name: Test installed version of python
