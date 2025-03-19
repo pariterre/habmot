@@ -5,8 +5,13 @@
     "model": {
         "file": "models/pyomecaman.bioMod",
         "imus": {
-            "left_ankle": "<NAME LEFT ANKLE IMU IN THE XSENS FILE NAMES>",
-            "left_thigh": "<NAME LEFT THIGH IMU IN THE XSENS FILE NAMES>"
+            "Hip": "<NAME HIP IMU IN THE XSENS FILE NAMES>",
+            "RightThigh": "<NAME RIGHT THIGH IMU IN THE XSENS FILE NAMES>",
+            "RightShank": "<NAME RIGHT SHANK IMU IN THE XSENS FILE NAMES>",
+            "LeftThigh": "<NAME LEFT THIGH IMU IN THE XSENS FILE NAMES>",
+            "LeftShank": "<NAME LEFT SHANK IMU IN THE XSENS FILE NAMES>",
+            "RightArm": "<NAME RIGHT ARM IMU IN THE XSENS FILE NAMES>",
+            "LeftArm": "<NAME LEFT ARM IMU IN THE XSENS FILE NAMES>"
         }
     },
     "data": {

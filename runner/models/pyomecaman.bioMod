@@ -3,8 +3,7 @@ version    4
 // Informations about Hip segment
     // Segment
     segment   Hip
-        translations yz
-        rotations    x
+        rotations    xyz
         mass    9.03529
         inertia
             0.04664    0.00000    0.00000
@@ -102,7 +101,7 @@ version    4
             0.00000    1.00000    0.00000    -0.10658
             0.00000    0.00000    1.00000    0.30485
             0.00000    0.00000    0.00000    1.00000
-        rotations    zx
+        rotations    xyz
         mass    2.39085
         inertia
             0.06873    0.00000    0.00000
@@ -145,7 +144,7 @@ version    4
             0.00000    1.00000    0.00000    -0.10658
             0.00000    0.00000    1.00000    0.30485
             0.00000    0.00000    0.00000    1.00000
-        rotations    zx
+        rotations    xyz
         mass    2.39085
         inertia
             0.06873    0.00000    0.00000
@@ -188,7 +187,7 @@ version    4
             0.00000    1.00000    0.00000    0.01342
             0.00000    0.00000    1.00000    -0.09895
             0.00000    0.00000    0.00000    1.00000
-        rotations    x
+        rotations    xyz
         mass    6.62882
         inertia
             0.07790    0.00000    0.00000
@@ -214,7 +213,7 @@ version    4
             0.00000    1.00000    0.00000    0.07271
             0.00000    0.00000    1.00000    -0.38304
             0.00000    0.00000    0.00000    1.00000
-        rotations    x
+        rotations    xyz
         mass    3.40206
         inertia
             0.04318    0.00000    0.00000
@@ -241,7 +240,6 @@ version    4
             0.00000    1.00000    0.00000    0.07374
             0.00000    0.00000    1.00000    -0.33859
             0.00000    0.00000    0.00000    1.00000
-        rotations    x
         mass    0.77311
         inertia
             0.00194    0.00000    0.00000
@@ -275,7 +273,7 @@ version    4
             0.00000    1.00000    0.00000    0.01342
             0.00000    0.00000    1.00000    -0.09895
             0.00000    0.00000    0.00000    1.00000
-        rotations    x
+        rotations    xyz
         mass    6.62882
         inertia
             0.07790    0.00000    0.00000
@@ -301,7 +299,7 @@ version    4
             0.00000    1.00000    0.00000    0.07271
             0.00000    0.00000    1.00000    -0.38304
             0.00000    0.00000    0.00000    1.00000
-        rotations    x
+        rotations    xyz
         mass    3.40206
         inertia
             0.04318    0.00000    0.00000
@@ -328,7 +326,6 @@ version    4
             0.00000    1.00000    0.00000    0.07374
             0.00000    0.00000    1.00000    -0.33859
             0.00000    0.00000    0.00000    1.00000
-        rotations    x
         mass    0.77311
         inertia
             0.00194    0.00000    0.00000
@@ -355,8 +352,29 @@ version    4
   // Add some inertial movement units (IMU) to the model
   imu Hip
     parent Hip
-    rt 0 0 0 xyz  0 0 0
-    technical 1
-    anatomical 1
   endimu
   
+  imu RightThigh
+    parent RightThigh
+  endimu
+
+  imu RightShank
+    parent RightShank
+  endimu
+
+  imu LeftThigh
+    parent LeftThigh
+  endimu
+
+  imu LeftShank
+    parent LeftShank
+  endimu
+  
+  imu RightArm
+    parent RightArm
+  endimu
+
+  imu LeftArm
+    parent LeftArm
+  endimu
+
