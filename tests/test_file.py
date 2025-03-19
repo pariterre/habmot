@@ -11,7 +11,7 @@ def test_version():
 def test_parse_config_file():
     config = habmot.Config.from_config_file(Path(__file__).parent)
 
-    assert config.model_filename == "models/mymodel.biomod"
+    assert config.model_filepath == "models/mymodel.biomod"
     assert config.imus == {"left_ankle": "first_imu", "left_thigh": "second_imu"}
     assert config.static_files == ["Tpose*/Tpose-*-first_imu.txt", "Tpose*/Tpose-*-second_imu.txt"]
     npt.assert_equal(config.static_frames, [[10, 20]])

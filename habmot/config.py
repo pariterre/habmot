@@ -9,7 +9,7 @@ import numpy.typing as npt
 
 @dataclass
 class Config:
-    model_filename: str
+    model_filepath: str
     imus: dict[str, str]
 
     static_files: list[str]
@@ -208,7 +208,7 @@ class Config:
 
         # Dispatch the config dict into the Config object
         return Config(
-            model_filename=config["model"]["file"],
+            model_filepath=config["model"]["file"],
             imus=config["model"]["imus"],
             static_files=config["data"]["static"]["files"],
             static_frames=config["data"]["static"]["frames"],

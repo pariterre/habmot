@@ -11,11 +11,14 @@ def main():
     ]
 
     # Load the config files
-    configs = {}
+    configs: dict[str, habmot.Config] = {}
     for subject in subjects:
         configs[subject] = habmot.Config.from_config_file(Path(data_folder) / subject)
 
-    # Create the static model
+        # Create the static model
+        model = biobuddy.BiomodModelParser(
+            (Path(__file__).parent / configs[subject].model_filepath).as_posix()
+        ).to_real()
 
 
 if __name__ == "__main__":
