@@ -20,6 +20,12 @@ def main():
             (Path(__file__).parent / configs[subject].model_filepath).as_posix()
         ).to_real()
 
+        # TODO: Add IMUs to all relevent segments
+        # TODO: Fetch the static trial
+        # TODO: Replace the imu by the static values
+        # TODO: Fetch data from trials
+        # TODO: Reconstruct the kinematics
+
 
 if __name__ == "__main__":
     main()

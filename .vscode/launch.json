@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Use adder",
+            "name": "Analyze data",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/runner/analyze_data.py",
