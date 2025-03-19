@@ -11,8 +11,8 @@
             "program": "${workspaceFolder}/runner/analyze_data.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "env": {"PYTHONPATH": "${workspaceFolder}"},
-            "cwd": "${workspaceFolder}/runner/"
+            "env": {"PYTHONPATH": "${workspaceFolder}:${workspaceFolder}/external/biobuddy"},
+            "cwd": "${workspaceFolder}/runner/",
         },
     ]
 }
