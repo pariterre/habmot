@@ -1,0 +1,35 @@
+{
+    "files": {
+        "extension": "txt"
+    },
+    "model": {
+        "file": "models/pyomecaman.bioMod",
+        "imus": {
+            "left_ankle": "<NAME LEFT ANKLE IMU IN THE XSENS FILE NAMES>",
+            "left_thigh": "<NAME LEFT THIGH IMU IN THE XSENS FILE NAMES>"
+        }
+    },
+    "data": {
+        "static": {
+            "prefix": "<NAME OF THE STATIC POSE FOLDER>",
+            "files": "[data.static.prefix]*/[data.static.prefix]-*-[model.imus.values(*)].[files.extension]",
+            "frames": [<FIRST FRAME TO USE>,<LAST FRAME TO USE>]
+        }, 
+        "trials": {
+            "prefixes": "[data.trials.frames.keys(*)]",
+            "files": "[data.trials.prefixes(*)]*/[data.trials.prefixes(*)]*-*-[model.imus.values(*)].[files.extension]",
+            "frames": {
+                "<NAME OF THE FIRST TRIAL FOLDER>": [
+                    [<FIRST FRAME OF FIRST ACTION TO USE>,<LAST FRAME OF FIRST ACTION TO USE>],
+                    [<FIRST FRAME OF SECOND ACTION TO USE>,<LAST FRAME OF SECOND ACTION TO USE>],
+                    [<FIRST FRAME OF THIRD ACTION TO USE>,<LAST FRAME OF THIRD ACTION TO USE>]
+                ],
+                "<NAME OF THE SECOND TRIAL FOLDER>": [
+                    [<FIRST FRAME OF FIRST ACTION TO USE>,<LAST FRAME OF FIRST ACTION TO USE>],
+                    [<FIRST FRAME OF SECOND ACTION TO USE>,<LAST FRAME OF SECOND ACTION TO USE>],
+                    [<FIRST FRAME OF THIRD ACTION TO USE>,<LAST FRAME OF THIRD ACTION TO USE>]
+                ]
+            }
+        }
+    }
+}
