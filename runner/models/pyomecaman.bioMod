@@ -4,6 +4,7 @@ version    4
     // Segment
     segment   Hip
         rotations    xyz
+        RT -0.25 0 0 xyz 0 0 0
         mass    9.03529
         inertia
             0.04664    0.00000    0.00000
@@ -95,12 +96,7 @@ version    4
     // Segment
     segment    RightArm
         parent    Trunk
-        RTinMatrix    1
-        RT
-            1.00000    0.00000    0.00000    0.16479
-            0.00000    1.00000    0.00000    -0.10658
-            0.00000    0.00000    1.00000    0.30485
-            0.00000    0.00000    0.00000    1.00000
+        RT 0 -1.5 0 xyz 0.16479 -0.10658 0.30485
         rotations    xyz
         mass    2.39085
         inertia
@@ -138,12 +134,7 @@ version    4
     // Segment
     segment    LeftArm
         parent    Trunk
-        RTinMatrix    1
-        RT
-            1.00000    0.00000    0.00000    -0.16479
-            0.00000    1.00000    0.00000    -0.10658
-            0.00000    0.00000    1.00000    0.30485
-            0.00000    0.00000    0.00000    1.00000
+        RT 0 1.5 0 xyz -0.16479 -0.10658 0.30485
         rotations    xyz
         mass    2.39085
         inertia

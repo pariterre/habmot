@@ -55,12 +55,26 @@ class Model:
         if static.header != ["Roll", "Pitch", "Yaw"]:
             raise NotImplementedError("Only Roll, Pitch, Yaw are supported for static")
 
+        # Calibrate the model with the static trial
         for imu, data in static.concatenated_data.items():
             if imu not in [segment.name for segment in model.segments]:
                 raise ValueError(f"IMU {imu} not found in the model")
 
-            scs = biobuddy.utils.linear_algebra.mean_homogenous_matrix(_to_homogenous_matrix(euler=data, seq="xyz"))
-            model.segments[imu].imus.append(biobuddy.InertialMeasurementUnitReal(name=imu, parent_name=imu, scs=scs))
+            scs_in_global = biobuddy.utils.linear_algebra.mean_homogenous_matrix(
+                _to_homogenous_matrix(euler=data, seq="xyz")
+            )
+
+            current_segment = model.segments[imu]
+            rt_to_global = current_segment.segment_coordinate_system.scs[:, :, 0]
+            while current_segment.parent_name:
+                current_segment = model.segments[current_segment.parent_name]
+                rt_to_global = current_segment.segment_coordinate_system.scs[:, :, 0] @ rt_to_global
+            rt_to_global_transposed = biobuddy.SegmentCoordinateSystemReal(scs=rt_to_global).transpose.scs[:, :, 0]
+            scs_in_local = np.eye(4)
+            scs_in_local[:3, :3] = (rt_to_global_transposed @ scs_in_global)[:3, :3]
+            model.segments[imu].imus.append(
+                biobuddy.InertialMeasurementUnitReal(name=imu, parent_name=imu, scs=scs_in_local)
+            )
 
         save_path: Path = Path(save_folder) / "static.bioMod"
         save_path.parent.mkdir(parents=True, exist_ok=True)

@@ -34,6 +34,8 @@ def main():
             _logger.info(f"    Reconstruct trial {key}")
             model.reconstruct_kinematics(trial_config=configs[subject].trials[key])
 
+        # TODO: Confirm with simple movement so the axes and right/left hand-side matrix are dealt with
+
 
 if __name__ == "__main__":
     main()
