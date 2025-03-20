@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
+from typing import Iterable
 
 import numpy as np
 
@@ -30,17 +31,16 @@ def _read_data_file(file: str) -> tuple[np.ndarray, np.ndarray]:
     column_count = len(header)
 
     # Parse the data
-    frame_stamps = np.ndarray(frame_count, dtype=int)
+    # We must np.arange the time stamps because they wrap after 65535
+    first_frame_count = int(lines[0].split("\t")[0])
+    frame_stamps = np.arange(frame_count, dtype=int) + first_frame_count
     data = np.ndarray((frame_count, column_count), dtype=float)
 
     # Read the data
     for frame_index in range(frame_count):
-        frame = lines[frame_index].split("\t")
-        frame_stamps[frame_index] = int(frame[0])
-        # Skip time stamps as it is often not provided
+        frame = lines[frame_index].split("\t")[2:]  # Remove the first two columns (PacketCounter and TimeStamp)
         data[frame_index, :] = [
-            np.nan if col + 2 >= len(frame) or frame[col + 2] == "" else float(frame[col + 2])
-            for col in range(column_count)
+            np.nan if col >= len(frame) or frame[col] == "" else float(frame[col]) for col in range(column_count)
         ]
 
     return header, frame_stamps, data
@@ -62,6 +62,40 @@ class Trial:
         for key in self.data[0].keys():
             out[key] = np.concatenate([data[key] for data in self.data])
         return out
+
+    def plot(self, data_keys: str | Iterable[str] = None, merged: bool = False, show_now: bool = True):
+        import matplotlib.pyplot as plt
+
+        def draw_graph(title: str, key: str, time_stamps: np.ndarray, data: np.ndarray):
+            plt.figure(title)
+            plt.title(title)
+            plt.plot(time_stamps, data)
+            plt.xlabel("Time (frame)")
+            plt.ylabel(key)
+
+        if data_keys is None:
+            self.plot(data_keys=self.concatenated_data.keys(), merged=merged, show_now=show_now)
+            return
+
+        if isinstance(data_keys, str):
+            data_keys = [data_keys]
+
+        for key in data_keys:
+            if merged:
+                draw_graph(
+                    title=key, key=key, time_stamps=self.concatenated_time_stamps, data=self.concatenated_data[key]
+                )
+            else:
+                for data, time_stamps in zip(self.data, self.time_stamps):
+                    draw_graph(
+                        title=f"{key} from {time_stamps[0]} to {time_stamps[-1]}",
+                        key=key,
+                        time_stamps=time_stamps,
+                        data=data[key],
+                    )
+
+        if show_now:
+            plt.show()
 
     @staticmethod
     def from_trial_config(config: TrialConfig) -> "Trial":

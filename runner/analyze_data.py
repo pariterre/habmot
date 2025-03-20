@@ -25,16 +25,14 @@ def main():
 
         # Load the static trial
         _logger.info(f"    Generate model from static")
-        static = habmot.Model.from_config(
+        model = habmot.Model.from_config(
             config=configs[subject], models_folder=models_folder, save_folder=results_folder / subject
         )
 
-        trials = {}
+        trials: dict[str, habmot.Trial] = {}
         for key in configs[subject].trials:
-            _logger.info(f"    Loading trial {key}")
-            trials[key] = habmot.Trial.from_trial_config(configs[subject].trials[key])
-
-        # TODO: Reconstruct the kinematics
+            _logger.info(f"    Reconstruct trial {key}")
+            model.reconstruct_kinematics(trial_config=configs[subject].trials[key])
 
 
 if __name__ == "__main__":
