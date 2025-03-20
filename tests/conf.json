@@ -13,11 +13,13 @@
         "static": {
             "prefix": "Tpose",
             "files": "[data.static.prefix]*/[data.static.prefix]-*-[model.imus.values(*)].[files.extension]",
+            "header": ["val0", "val1"],
             "frames": [10,20]
         }, 
         "trials": {
             "prefixes": "[data.trials.frames.keys(*)]",
             "files": "[data.trials.prefixes(*)]*/[data.trials.prefixes(*)]*-*-[model.imus.values(*)].[files.extension]",
+            "header": ["val2", "val3"],
             "frames": {
                 "first": [
                     [10,20],

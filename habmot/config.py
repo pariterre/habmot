@@ -16,6 +16,7 @@ class ImuConfig:
 @dataclass(frozen=True)
 class TrialConfig:
     files: dict[str, str]  # imu_name: file_path
+    header: list[str]
     frames: npt.NDArray[np.int_]
 
 
@@ -183,6 +184,11 @@ class Config:
             if not isinstance(key, str):
                 raise ValueError('The keys in the "files" in the config["data"]["static"] file is not a string.')
 
+        if "header" not in config["data"]["static"]:
+            raise ValueError('Missing "header" in the config["data"]["static"] file.')
+        if not isinstance(config["data"]["static"]["header"], list):
+            raise ValueError('The "header" in the config["data"]["static"] file is not a list of strings.')
+
         if "frames" not in config["data"]["static"]:
             raise ValueError('Missing "frames" in the config["data"]["static"] file.')
         if not isinstance(config["data"]["static"]["frames"], list):
@@ -248,6 +254,11 @@ class Config:
             for prefix, files in zip(config["data"]["trials"]["prefixes"], config["data"]["trials"]["files"])
         }
 
+        if "header" not in config["data"]["trials"]:
+            raise ValueError('Missing "header" in the config["data"]["trials"] file.')
+        if not isinstance(config["data"]["trials"]["header"], list):
+            raise ValueError('The "header" in the config["data"]["trials"] file is not a list of strings.')
+
         if "frames" not in config["data"]["trials"]:
             raise ValueError('Missing "frames" in the config["data"]["trials"] file.')
         if not isinstance(config["data"]["trials"]["frames"], dict):
@@ -285,6 +296,7 @@ class Config:
                 key: _collapse_filepath(base_folder=subject_folder, filepath=file)
                 for key, file in config["data"]["static"]["files"].items()
             },
+            header=config["data"]["static"]["header"],
             frames=config["data"]["static"]["frames"],
         )
 
@@ -295,6 +307,7 @@ class Config:
                     key: _collapse_filepath(base_folder=subject_folder, filepath=file)
                     for key, file in config["data"]["trials"]["files"][prefix].items()
                 },
+                header=config["data"]["trials"]["header"],
                 frames=config["data"]["trials"]["frames"][prefix],
             )
             for prefix in config["data"]["trials"]["prefixes"]
