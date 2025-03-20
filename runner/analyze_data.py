@@ -15,14 +15,19 @@ def main():
     for subject in subjects:
         configs[subject] = habmot.Config.from_config_file(Path(data_folder) / subject)
 
-        # Create the static model
+        # Load the static avatar
         model = biobuddy.BiomodModelParser(
             (Path(__file__).parent / configs[subject].model_filepath).as_posix()
         ).to_real()
 
-        # TODO: Fetch the static trial
+        # Load the static trial
+        static = habmot.Trial.from_trial_config(configs[subject].static)
+        trials = {key: habmot.Trial.from_trial_config(configs[subject].trials[key]) for key in configs[subject].trials}
+
+        print(static)
+        print(trials)
+
         # TODO: Replace the imu by the static values
-        # TODO: Fetch data from trials
         # TODO: Reconstruct the kinematics
 
 

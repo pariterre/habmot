@@ -240,6 +240,7 @@ version    4
             0.00000    1.00000    0.00000    0.07374
             0.00000    0.00000    1.00000    -0.33859
             0.00000    0.00000    0.00000    1.00000
+        rotations    xyz
         mass    0.77311
         inertia
             0.00194    0.00000    0.00000
@@ -326,6 +327,7 @@ version    4
             0.00000    1.00000    0.00000    0.07374
             0.00000    0.00000    1.00000    -0.33859
             0.00000    0.00000    0.00000    1.00000
+        rotations    xyz
         mass    0.77311
         inertia
             0.00194    0.00000    0.00000
@@ -362,12 +364,20 @@ version    4
     parent RightShank
   endimu
 
+  imu RightFoot
+    parent RightFoot
+  endimu
+
   imu LeftThigh
     parent LeftThigh
   endimu
 
   imu LeftShank
     parent LeftShank
+  endimu
+
+  imu LeftFoot
+    parent LeftFoot
   endimu
   
   imu RightArm
