@@ -57,8 +57,8 @@ class Model:
 
         # Calibrate the model with the static trial
         for imu, data in static.concatenated_data.items():
-            if imu not in [segment.name for segment in model.segments]:
-                raise ValueError(f"IMU {imu} not found in the model")
+            if imu not in model.segments.keys():
+                raise ValueError(f"Segment {imu} not found in the model. Available segments: {model.segments.keys()}")
 
             scs_in_global = biobuddy.utils.linear_algebra.mean_homogenous_matrix(
                 _to_homogenous_matrix(euler=data, seq="xyz")
