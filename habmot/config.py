@@ -91,8 +91,9 @@ class Config:
             # First change the current key into a list. This is useful to deal with (*) elements.
             current_expand = [item]
 
-            # Find all the [...]
-            replacable_tag = r"\[.*?\]"
+            # Find all the [...] but not the \[...\] elements (i.e. with an escape caracter)
+            replacable_tag = r"(?<!\\)\[.*?\]"
+            # replacable_tag = r"\[.*?\]"
             patters = set(re.findall(replacable_tag, item))
             # sort the patters by alphabetical order to ensure that the replacement is done in the right order.
             for pattern in patters:
@@ -146,9 +147,25 @@ class Config:
 
             return need_repass
 
+        def collapse_escape_characters(config_item):
+            if isinstance(config_item, dict):
+                for key in config_item:
+                    config_item[key] = collapse_escape_characters(config_item[key])
+            elif isinstance(config_item, list):
+                for index in range(len(config_item)):
+                    config_item[index] = collapse_escape_characters(config_item[index])
+            elif isinstance(config_item, str):
+                config_item = config_item.replace("\\[", "[").replace("\\]", "]")
+            elif isinstance(config_item, float) or isinstance(config_item, int):
+                pass
+            else:
+                raise ValueError(f"Unknown type {type(config_item)}")
+            return config_item
+
         # Do the replacement until we can't do it anymore.
         while replace_config_values(config):
             pass
+        collapse_escape_characters(config)
 
         # Do a sanity check of the config
         if "model" not in config:

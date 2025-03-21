@@ -54,17 +54,21 @@ class Model:
     def from_config(config: Config, models_folder: str, save_folder: str) -> "Model":
         model = biobuddy.BiomodModelParser(Path(models_folder) / config.model_filepath).to_real()
 
+        axes_required = ["Roll", "Pitch", "Yaw"]
         static = Trial.from_trial_config(config.static)
-        if static.header != ["Roll", "Pitch", "Yaw"]:
-            raise NotImplementedError("Only Roll, Pitch, Yaw are supported for static")
+        if any(axis not in static.header for axis in axes_required):
+            raise NotImplementedError("Roll, Pitch, Yaw are required when loading the model")
 
         # Calibrate the model with the static trial
         for imu, data in static.concatenated_data.items():
+            euler = data[:, [axes_required.index(axis) for axis in static.header if axis in axes_required]]
+            matrix = data[:, 3:].reshape((-1, 3, 3))[0, :, :].T
+
             if imu not in model.segments.keys():
                 raise ValueError(f"Segment {imu} not found in the model. Available segments: {model.segments.keys()}")
 
             imu_in_global = biobuddy.utils.linear_algebra.mean_homogenous_matrix(
-                _to_homogenous_matrix(euler=data, seq=_xsens_euler_sequence)
+                _to_homogenous_matrix(euler=euler, seq=_xsens_euler_sequence)
             )
 
             current_segment = model.segments[imu]
@@ -95,6 +99,6 @@ def _to_homogenous_matrix(euler: np.ndarray, seq: str) -> np.ndarray:
 
     scs = np.repeat(np.eye(4)[:, :, None], euler.shape[0], axis=2)
     scs[:3, :3, :] = np.einsum(
-        "ijk->jik", scipy.spatial.transform.Rotation.from_euler(seq, euler, degrees=True).as_matrix().T
+        "ijk->jki", scipy.spatial.transform.Rotation.from_euler(seq, euler, degrees=True).as_matrix()
     )
     return scs
