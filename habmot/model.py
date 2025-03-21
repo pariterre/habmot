@@ -10,6 +10,9 @@ from .config import Config, TrialConfig
 from .trial import Trial
 
 
+_xsens_euler_sequence: str = "zyx"
+
+
 @dataclass(frozen=True)
 class Model:
     _biomodel: biorbd.Model
@@ -25,7 +28,7 @@ class Model:
 
             # Convert Roll, Pitch, Yaw of IMUs to homogenous matrix (in the same order as the model)
             model_imus = [imu.to_string() for imu in self._biomodel.IMUsNames()]
-            targets = [_to_homogenous_matrix(euler=data[imu], seq="xyz") for imu in model_imus]
+            targets = [_to_homogenous_matrix(euler=data[imu], seq=_xsens_euler_sequence) for imu in model_imus]
 
             # Prepare temporary variables and output
             q_out = biorbd.GeneralizedCoordinates(self._biomodel)
@@ -60,8 +63,8 @@ class Model:
             if imu not in model.segments.keys():
                 raise ValueError(f"Segment {imu} not found in the model. Available segments: {model.segments.keys()}")
 
-            scs_in_global = biobuddy.utils.linear_algebra.mean_homogenous_matrix(
-                _to_homogenous_matrix(euler=data, seq="xyz")
+            imu_in_global = biobuddy.utils.linear_algebra.mean_homogenous_matrix(
+                _to_homogenous_matrix(euler=data, seq=_xsens_euler_sequence)
             )
 
             current_segment = model.segments[imu]
@@ -71,7 +74,7 @@ class Model:
                 rt_to_global = current_segment.segment_coordinate_system.scs[:, :, 0] @ rt_to_global
             rt_to_global_transposed = biobuddy.SegmentCoordinateSystemReal(scs=rt_to_global).transpose.scs[:, :, 0]
             scs_in_local = np.eye(4)
-            scs_in_local[:3, :3] = (rt_to_global_transposed @ scs_in_global)[:3, :3]
+            scs_in_local[:3, :3] = (rt_to_global_transposed @ imu_in_global)[:3, :3]
             model.segments[imu].imus.append(
                 biobuddy.InertialMeasurementUnitReal(name=imu, parent_name=imu, scs=scs_in_local)
             )
@@ -84,6 +87,12 @@ class Model:
 
 
 def _to_homogenous_matrix(euler: np.ndarray, seq: str) -> np.ndarray:
+    # Reorder the euler angles to match the seq (e.g. zyx -> euler[:, [2, 1, 0]])
+    euler = euler[:, [seq.index(axis) for axis in "xyz"]]
+
+    # Change the seq for intrinsic rotation
+    seq = seq.upper()
+
     scs = np.repeat(np.eye(4)[:, :, None], euler.shape[0], axis=2)
     scs[:3, :3, :] = np.einsum(
         "ijk->jik", scipy.spatial.transform.Rotation.from_euler(seq, euler, degrees=True).as_matrix().T
