@@ -29,6 +29,8 @@ def main():
             config=configs[subject], models_folder=models_folder, save_folder=results_folder / subject
         )
 
+        # model.reconstruct_kinematics(trial_config=configs[subject].static)
+
         trials: dict[str, habmot.Trial] = {}
         for key in configs[subject].trials:
             _logger.info(f"    Reconstruct trial {key}")
