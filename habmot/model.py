@@ -1,16 +1,27 @@
 from dataclasses import dataclass
+from enum import Enum
+import logging
 from pathlib import Path
 
 import biorbd
 import biobuddy
 import numpy as np
 import scipy
+from scipy.optimize import minimize
 
 from .config import Config, TrialConfig
 from .trial import Trial
 
+_logger = logging.getLogger(__name__)
+
+
+class ReconstructMethods(Enum):
+    KALMAN = "kalman"
+    GLOBAL_OPTIMIZATION = "global_optimization"
+
 
 def _reconstruct_with_kalman(biorbd_model: biorbd.Model, targets: list[np.ndarray]) -> np.ndarray:
+    _logger.info("\t\tReconstruct with Kalman filter")
     frame_count = targets[0].shape[-1]
 
     nq = biorbd_model.nbQ()
@@ -29,22 +40,44 @@ def _reconstruct_with_kalman(biorbd_model: biorbd.Model, targets: list[np.ndarra
 
         q_recons[:, time_index] = q_out.to_array()
 
-        import bioviz
-
-    b = bioviz.Viz(loaded_model=biorbd_model)
-    b.load_movement(q_recons)
-    b.exec()
+    _logger.info("\t\tReconstruction done")
+    return q_recons
 
 
-def _reconstruct_global_optimization(biorbd_model: biorbd.Model, targets: list[np.ndarray]) -> np.ndarray:
-    from scipy.optimize import minimize
+def _reconstruct_with_global_optimization(biorbd_model: biorbd.Model, targets: list[np.ndarray]) -> np.ndarray:
+    _logger.info("\t\tReconstruct with global optimization")
+    frame_count = targets[0].shape[-1]
+
+    def objective_function(q: np.ndarray) -> float:
+        imus_model = [imu.to_array() for imu in biorbd_model.IMU(q)]
+
+        defects = np.array(
+            [
+                targets[imu_index][:3, :3, time_index] - imus_model[imu_index][:3, :3]
+                for imu_index in range(biorbd_model.nbIMUs())
+            ]
+        ).reshape((-1,))
+        return np.linalg.norm(defects)
+
+    q_recons = np.ndarray((biorbd_model.nbQ(), frame_count))
+    q_init = np.zeros((biorbd_model.nbQ(),))
+    for time_index in range(frame_count):
+        if time_index % 200 == 0:
+            _logger.info(f"\t\t\tTime index: {time_index}..")
+        q_init = minimize(objective_function, q_init).x
+        q_recons[:, time_index] = q_init
+
+    _logger.info("\t\tReconstruction done")
+    return q_recons
 
 
 @dataclass(frozen=True)
 class Model:
     _biomodel: biorbd.Model
 
-    def reconstruct_kinematics(self, trial_config: TrialConfig):
+    def reconstruct_kinematics(
+        self, trial_config: TrialConfig, methods: ReconstructMethods | list[ReconstructMethods]
+    ) -> dict[str, np.ndarray]:
         trial = Trial.from_trial_config(trial_config)
 
         axis_names = ["Roll", "Pitch", "Yaw"]
@@ -57,7 +90,27 @@ class Model:
                 for imu in [imu.to_string() for imu in self._biomodel.IMUsNames()]
             ]
 
-            _reconstruct_with_kalman(self._biomodel, targets)
+            if isinstance(methods, ReconstructMethods):
+                methods = [methods]
+
+            out = {}
+            if ReconstructMethods.KALMAN in methods:
+                out[ReconstructMethods.KALMAN] = _reconstruct_with_kalman(self._biomodel, targets)
+            if ReconstructMethods.GLOBAL_OPTIMIZATION in methods:
+                out[ReconstructMethods.GLOBAL_OPTIMIZATION] = _reconstruct_with_global_optimization(
+                    self._biomodel, targets
+                )
+
+            if ReconstructMethods.KALMAN in methods and ReconstructMethods.GLOBAL_OPTIMIZATION in methods:
+                mean_rmse = np.mean(
+                    np.sqrt(
+                        np.mean(
+                            (out[ReconstructMethods.KALMAN] - out[ReconstructMethods.GLOBAL_OPTIMIZATION]) ** 2, axis=0
+                        )
+                    )
+                )
+                _logger.info(f"\t\tMean RMSE between Kalman and Global optimization is: {mean_rmse}")
+            return out
 
     @staticmethod
     def from_biomod(file_path: str) -> "Model":
@@ -102,10 +155,17 @@ class Model:
 
         return Model.from_biomod(file_path=save_path.as_posix())
 
+    def animate(self, q: np.ndarray):
+        import bioviz
+
+        b = bioviz.Viz(loaded_model=self._biomodel)
+        b.load_movement(q)
+        b.exec()
+
 
 def _to_xsens_homogenous_matrix(euler: np.ndarray) -> np.ndarray:
 
-    seq = "XZY"
+    seq = "XYZ"
     euler = euler[:, [1, 2, 0]]
 
     scs = np.repeat(np.eye(4)[:, :, None], euler.shape[0], axis=2)

@@ -17,6 +17,7 @@ def main():
         # "Subject1",
         "Subject3"
     ]
+    reconstruct_methods = [habmot.ReconstructMethods.KALMAN, habmot.ReconstructMethods.GLOBAL_OPTIMIZATION]
 
     # Load the config files
     configs: dict[str, habmot.Config] = {}
@@ -35,7 +36,9 @@ def main():
         trials: dict[str, habmot.Trial] = {}
         for key in configs[subject].trials:
             _logger.info(f"    Reconstruct trial {key}")
-            model.reconstruct_kinematics(trial_config=configs[subject].trials[key])
+            trials[key] = model.reconstruct_kinematics(
+                trial_config=configs[subject].trials[key], methods=reconstruct_methods
+            )
 
         # TODO: Confirm with simple movement so the axes and right/left hand-side matrix are dealt with
 
