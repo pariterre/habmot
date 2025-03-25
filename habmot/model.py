@@ -10,9 +10,6 @@ from .config import Config, TrialConfig
 from .trial import Trial
 
 
-_xsens_euler_sequence: str = "zyx"
-
-
 def _reconstruct_with_kalman(biorbd_model: biorbd.Model, targets: list[np.ndarray]) -> np.ndarray:
     frame_count = targets[0].shape[-1]
 
@@ -54,9 +51,8 @@ class Model:
         for trial_time, data in zip(trial.time_stamps, trial.data):
             # Convert Roll, Pitch, Yaw of IMUs to homogenous matrix (in the same order as the model)
             targets: list[np.ndarray] = [
-                _to_homogenous_matrix(
+                _to_xsens_homogenous_matrix(
                     euler=data[imu][:, [axis_names.index(axis) for axis in trial_config.header if axis in axis_names]],
-                    seq=_xsens_euler_sequence,
                 )
                 for imu in [imu.to_string() for imu in self._biomodel.IMUsNames()]
             ]
@@ -84,7 +80,7 @@ class Model:
                 raise ValueError(f"Segment {imu} not found in the model. Available segments: {model.segments.keys()}")
 
             imu_in_global = biobuddy.utils.linear_algebra.mean_homogenous_matrix(
-                _to_homogenous_matrix(euler=euler, seq=_xsens_euler_sequence)
+                _to_xsens_homogenous_matrix(euler=euler)
             )
 
             current_segment = model.segments[imu]
@@ -107,16 +103,38 @@ class Model:
         return Model.from_biomod(file_path=save_path.as_posix())
 
 
-def _to_homogenous_matrix(euler: np.ndarray, seq: str) -> np.ndarray:
-    # Reorder the euler angles to match the seq (e.g. zyx -> euler[:, [2, 1, 0]])
-    euler = euler[:, [seq.index(axis) for axis in "xyz"]]
-    euler[:, [0, 2]] = -euler[:, [0, 2]]
+def _to_xsens_homogenous_matrix(euler: np.ndarray) -> np.ndarray:
 
-    # Change the seq for intrinsic rotation
-    seq = seq.upper()
+    seq = "XZY"
+    euler = euler[:, [1, 2, 0]]
 
     scs = np.repeat(np.eye(4)[:, :, None], euler.shape[0], axis=2)
     scs[:3, :3, :] = np.einsum(
         "ijk->jki", scipy.spatial.transform.Rotation.from_euler(seq, euler, degrees=True).as_matrix()
     )
+
     return scs
+
+    # CANDIDATES (Same direction)
+    # seq = "XYZ" / euler = euler[:, [1, 2, 0]]
+    # seq = "XZY" / euler = euler[:, [1, 2, 0]]
+    # seq = "YZX" / euler = euler[:, [2, 0, 1]]
+    # seq = "ZYX" / euler = euler[:, [2, 0, 1]]
+    # seq = "YXZ" / euler = euler[:, [2, 1, 0]]
+    # seq = "ZXY" / euler = euler[:, [2, 1, 0]]
+    # seq = "yxz" / euler = euler[:, [0, 1, 2]]
+    # seq = "zxy" / euler = euler[:, [0, 1, 2]]
+    # seq = "yzx" / euler = euler[:, [0, 2, 1]]
+    # seq = "zyx" / euler = euler[:, [0, 2, 1]]
+    # seq = "xyz" / euler = euler[:, [1, 0, 2]]
+    # seq = "xzy" / euler = euler[:, [1, 0, 2]]
+
+    # CANDIDATES (Opposite direction)
+    # seq = "YXZ" / euler = euler[:, [1, 0, 2]]
+    # seq = "ZXY" / euler = euler[:, [1, 0, 2]]
+    # seq = "yzx" / euler = euler[:, [1, 2, 0]]
+    # seq = "zyx" / euler = euler[:, [1, 2, 0]]
+    # seq = "yxz" / euler = euler[:, [2, 0, 1]]
+    # seq = "zxy" / euler = euler[:, [2, 0, 1]]
+    # seq = "yzx" / euler = euler[:, [2, 1, 0]]
+    # seq = "zyx" / euler = euler[:, [2, 1, 0]]

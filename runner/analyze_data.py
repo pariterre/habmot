@@ -14,7 +14,8 @@ def main():
     models_folder = current_folder / "models"
     results_folder = current_folder / ".." / "results"
     subjects = [
-        "Jenn",
+        # "Subject1",
+        "Subject3"
     ]
 
     # Load the config files
