@@ -15,9 +15,14 @@ def main():
     results_folder = current_folder / ".." / "results"
     subjects = [
         # "Subject1",
-        "Subject3"
+        # "Subject3",
+        "Subject4",
     ]
-    reconstruct_methods = [habmot.ReconstructMethods.KALMAN, habmot.ReconstructMethods.GLOBAL_OPTIMIZATION]
+    reconstruct_methods = [
+        # habmot.ReconstructMethods.NO_MODEL,
+        habmot.ReconstructMethods.KALMAN,
+        habmot.ReconstructMethods.GLOBAL_OPTIMIZATION,
+    ]
 
     # Load the config files
     configs: dict[str, habmot.Config] = {}
@@ -31,7 +36,10 @@ def main():
             config=configs[subject], models_folder=models_folder, save_folder=results_folder / subject
         )
 
-        # model.reconstruct_kinematics(trial_config=configs[subject].static)
+        # tata = model.reconstruct_kinematics(trial_config=configs[subject].static, methods=reconstruct_methods)
+        # model.animate(tata[habmot.ReconstructMethods.GLOBAL_OPTIMIZATION])
+        # model.animate(tata[habmot.ReconstructMethods.KALMAN])
+        # model.animate(tata[habmot.ReconstructMethods.NO_MODEL])
 
         trials: dict[str, habmot.Trial] = {}
         for key in configs[subject].trials:
@@ -39,6 +47,9 @@ def main():
             trials[key] = model.reconstruct_kinematics(
                 trial_config=configs[subject].trials[key], methods=reconstruct_methods
             )
+            # model.animate(trials[key][habmot.ReconstructMethods.GLOBAL_OPTIMIZATION])
+            model.animate(trials[key][habmot.ReconstructMethods.KALMAN])
+            # model.animate(trials[key][habmot.ReconstructMethods.NO_MODEL])
 
         # TODO: Confirm with simple movement so the axes and right/left hand-side matrix are dealt with
 
