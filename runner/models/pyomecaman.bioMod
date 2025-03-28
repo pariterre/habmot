@@ -1,10 +1,11 @@
 version    4
+    
+
 
 // Informations about Hip segment
     // Segment
     segment   Hip
         rotations    xyz
-        RT -0.25 0 0 xyz 0 0 0
         mass    9.03529
         inertia
             0.04664    0.00000    0.00000
@@ -20,10 +21,15 @@ version    4
         mesh   -0.1038    0.0821         0
     endsegment
     
+    segment PostHip
+        parent Hip
+        RT -0.25 0 0 xyz 0 0 0
+    endsegment
+
 // Informations about Trunk segment
     // Segment
     segment    Trunk
-        parent    Hip
+        parent    PostHip
         RTinMatrix    1
         RT
             1.00000    0.00000    0.00000    0
@@ -171,7 +177,7 @@ version    4
 // Informations about RightThigh segment
     // Segment
     segment    RightThigh
-        parent    Hip
+        parent    PostHip
         RTinMatrix    1
         RT
             1.00000    0.00000    0.00000    0.08020
@@ -258,7 +264,7 @@ version    4
 // Informations about LeftThigh segment
     // Segment
     segment    LeftThigh
-        parent    Hip
+        parent    PostHip
         RTinMatrix    1
         RT
             1.00000    0.00000    0.00000    -0.08020

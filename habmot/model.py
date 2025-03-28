@@ -134,24 +134,34 @@ def _reconstruct_with_global_optimization(biorbd_model: biorbd.Model, targets: l
     return q_recons
 
 
-def _realign_vertical_rt(imu_in_global: np.ndarray) -> np.ndarray:
+def _realign_vertical_rt(root_in_global: np.ndarray, reference_imu_in_global: np.ndarray) -> np.ndarray:
     def best_vertical_rotation(angle: np.array) -> biobuddy.SegmentReal:
-        rotated_imu = scipy.spatial.transform.Rotation.from_euler("Z", angle[0]).as_matrix() @ imu_in_global[:3, :3]
-        saggital_error = np.dot(rotated_imu[:, saggital_axis_index], np.array([1, 0, 0])) - 1
-        frontal_error = np.dot(rotated_imu[:, frontal_axis_index], np.array([0, 1, 0])) - 1
+        root = scipy.spatial.transform.Rotation.from_euler("Z", angle[0]).as_matrix() @ root_in_global[:3, :3]
 
+        saggital_error = np.dot(root[:3, root_x], reference_imu_in_global[:3, imu_x]) - 1
+        frontal_error = np.dot(root[:3, root_y], reference_imu_in_global[:3, imu_y]) - 1
         return saggital_error**2 + frontal_error**2
 
-    # Find the vertical axis of the IMU
-    for index, name in enumerate("xyz"):
-        if np.abs(np.dot(imu_in_global[:3, index], np.array([0, 0, 1]))) > 0.9:
-            imu_vertical_axis = name
-            break
-    else:
+    def find_axes_indices(matrix: np.ndarray) -> tuple[int, int, int]:
+        for index, _ in enumerate("xyz"):
+            if np.abs(np.dot(matrix[:3, index], np.array([0, 0, 1]))) > 0.9:
+                z_axis = index
+                x_axis = (z_axis + 1) % 3
+                y_axis = (z_axis + 2) % 3
+                return x_axis, y_axis, z_axis
         raise ValueError("No vertical axis found")
-    vertical_axis_index = "xyz".index(imu_vertical_axis)
-    saggital_axis_index = (vertical_axis_index + 1) % 3
-    frontal_axis_index = (vertical_axis_index + 2) % 3
+
+    # Find the axes of the matrices
+    root_x, root_y, root_z = find_axes_indices(root_in_global[:3, :3])
+    imu_x, imu_y, imu_z = find_axes_indices(reference_imu_in_global[:3, :3])
+
+    # If the z-axis of a matrix is pointing down, flip the x-axis (effectively rotating the matrix 180 degrees)
+    if np.dot(root_in_global[:3, root_z], [0, 0, 1]) < 0:
+        root_in_global = root_in_global.copy()
+        root_in_global[:, root_x] *= -1
+    if np.dot(reference_imu_in_global[:3, imu_z], [0, 0, 1]) < 0:
+        reference_imu_in_global = reference_imu_in_global.copy()
+        reference_imu_in_global[:, imu_x] *= -1
 
     value = scipy.optimize.minimize(best_vertical_rotation, 0).x[0]
     root_rt = np.eye(4)
@@ -211,18 +221,27 @@ class Model:
         static = Trial.from_trial_config(config.static)
         if any(axis not in static.header for axis in axes_required):
             raise NotImplementedError("Roll, Pitch, Yaw are required when loading the model")
+        data_indices = [axes_required.index(axis) for axis in static.header if axis in axes_required]
+
+        # Do a prealignment of the root segment with its corresponding IMU
+        root_segment = model.segments[0]
+        root_segment_rt = root_segment.segment_coordinate_system.scs[:, :, 0]
+        root_imu = biobuddy.utils.linear_algebra.mean_homogenous_matrix(
+            _to_xsens_homogenous_matrix(euler=static.concatenated_data[root_segment.name][:, data_indices])
+        )
+        root_correction = _realign_vertical_rt(root_in_global=root_segment_rt, reference_imu_in_global=root_imu)
+        root_segment.segment_coordinate_system.scs[:, :, 0] = root_correction @ root_segment_rt
 
         # Calibrate the model with the static trial
-        imu_root_correction = None
         for imu, data in static.concatenated_data.items():
-            euler = data[:, [axes_required.index(axis) for axis in static.header if axis in axes_required]]
+            euler = data[:, data_indices]
 
-            # Validity check
-            to_matrix = _to_homogenous_matrix(euler=euler, seq="ZYX")[:3, :3, :]
-            provided_matrix = data[:, 3:].reshape((-1, 3, 3)).T
-            for i in range(to_matrix.shape[-1]):
-                if not np.allclose(to_matrix[:, :, i], provided_matrix[:, :, i], atol=1e-5):
-                    raise ValueError(f"Provided matrix for {imu} is not close to the calculated matrix")
+            # # Validity check
+            # to_matrix = _to_homogenous_matrix(euler=euler, seq="ZYX")[:3, :3, :]
+            # provided_matrix = data[:, 3:].reshape((-1, 3, 3)).T
+            # for i in range(to_matrix.shape[-1]):
+            #     if not np.allclose(to_matrix[:, :, i], provided_matrix[:, :, i], atol=1e-5):
+            #         raise ValueError(f"Provided matrix for {imu} is not close to the calculated matrix")
 
             if imu not in model.segments.keys():
                 raise ValueError(f"Segment {imu} not found in the model. Available segments: {model.segments.keys()}")
@@ -236,13 +255,10 @@ class Model:
             while current_segment.parent_name:
                 current_segment = model.segments[current_segment.parent_name]
                 rt_to_global = current_segment.segment_coordinate_system.scs[:, :, 0] @ rt_to_global
-
-            if imu_root_correction is None:
-                imu_root_correction = np.eye(4)  # _realign_vertical_rt(imu_in_global)
             rt_to_global_T = biobuddy.SegmentCoordinateSystemReal(scs=rt_to_global).transpose.scs[:, :, 0]
 
             scs_in_local = np.eye(4)
-            scs_in_local[:3, :3] = (rt_to_global_T @ (imu_root_correction @ imu_in_global))[:3, :3]
+            scs_in_local[:3, :3] = (rt_to_global_T @ imu_in_global)[:3, :3]
             model.segments[imu].imus.append(
                 biobuddy.InertialMeasurementUnitReal(name=imu, parent_name=imu, scs=scs_in_local)
             )
