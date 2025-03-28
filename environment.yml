@@ -5,6 +5,9 @@ channels:
 dependencies:
 - biorbd >=1.11.1
 - matplotlib
-- bioviz
+- ezc3d
 - numpy
 - scipy
+- pyomeca
+- pyqt
+- vtk

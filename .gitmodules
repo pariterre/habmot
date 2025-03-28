@@ -1,3 +1,6 @@
 [submodule "external/biobuddy"]
 	path = external/biobuddy
 	url = https://github.com/pariterre/biobuddy.git
+[submodule "external/bioviz"]
+	path = external/bioviz
+	url = https://github.com/pyomeca/bioviz

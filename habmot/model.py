@@ -269,10 +269,10 @@ class Model:
 
         return Model.from_biomod(file_path=save_path.as_posix())
 
-    def animate(self, q: np.ndarray):
+    def animate(self, q: np.ndarray) -> None:
         import bioviz
 
-        b = bioviz.Viz(loaded_model=self._biomodel)
+        b = bioviz.Viz(loaded_model=self._biomodel, show_imus=True)
         b.load_movement(q)
         b.exec()
 
@@ -294,6 +294,8 @@ def _to_homogenous_matrix(euler: np.ndarray, seq: str) -> np.ndarray:
 def _to_xsens_homogenous_matrix(euler: np.ndarray) -> np.ndarray:
     seq = "ZYX"
     euler = euler[:, [2, 1, 0]]
+    # euler[:, 0] = -euler[:, 0]
+    # euler[:, 1] = -euler[:, 1]
 
     scs = np.repeat(np.eye(4)[:, :, None], euler.shape[0], axis=2)
     scs[:3, :3, :] = np.einsum(
