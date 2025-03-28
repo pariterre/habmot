@@ -19,7 +19,7 @@ def main():
         "Subject4",
     ]
     reconstruct_methods = [
-        # habmot.ReconstructMethods.NO_MODEL,
+        habmot.ReconstructMethods.NO_MODEL,
         habmot.ReconstructMethods.KALMAN,
         habmot.ReconstructMethods.GLOBAL_OPTIMIZATION,
     ]
@@ -33,23 +33,20 @@ def main():
         # Load the static trial
         _logger.info(f"    Generate model from static")
         model = habmot.Model.from_config(
-            config=configs[subject], models_folder=models_folder, save_folder=results_folder / subject
+            config=configs[subject],
+            models_folder=models_folder,
+            save_folder=results_folder / subject,
+            show_static=True,
         )
 
-        # tata = model.reconstruct_kinematics(trial_config=configs[subject].static, methods=reconstruct_methods)
-        # model.animate(tata[habmot.ReconstructMethods.GLOBAL_OPTIMIZATION])
-        # model.animate(tata[habmot.ReconstructMethods.KALMAN])
-        # model.animate(tata[habmot.ReconstructMethods.NO_MODEL])
+        # model.reconstruct_kinematics(trial_config=configs[subject].static, methods=reconstruct_methods, animate=True)
 
         trials: dict[str, habmot.Trial] = {}
         for key in configs[subject].trials:
             _logger.info(f"    Reconstruct trial {key}")
             trials[key] = model.reconstruct_kinematics(
-                trial_config=configs[subject].trials[key], methods=reconstruct_methods
+                trial_config=configs[subject].trials[key], methods=reconstruct_methods, animate=True
             )
-            # model.animate(trials[key][habmot.ReconstructMethods.GLOBAL_OPTIMIZATION])
-            model.animate(trials[key][habmot.ReconstructMethods.KALMAN])
-            # model.animate(trials[key][habmot.ReconstructMethods.NO_MODEL])
 
         # TODO: Confirm with simple movement so the axes and right/left hand-side matrix are dealt with
 
