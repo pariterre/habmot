@@ -14,58 +14,6 @@ from .trial import Trial
 _logger = logging.getLogger(__name__)
 
 
-class ReconstructMethods(Enum):
-    NO_MODEL = "no_model"
-    KALMAN = "kalman"
-    GLOBAL_OPTIMIZATION = "global_optimization"
-
-
-def _reconstruct_no_model(biorbd_model: biorbd.Model, targets: dict[str, np.ndarray]) -> np.ndarray:
-    frame_count = targets[list(targets.keys())[0]].shape[-1]
-
-    q_recons = np.zeros((biorbd_model.nbQ(), frame_count))
-    imu_names = [imu.to_string() for imu in biorbd_model.IMUsNames()]
-    for imu in imu_names:
-        # Find the parent of the IMU
-        imu_idx = imu_names.index(imu)
-        segment = biorbd_model.segment(imu)
-        local_imu = biorbd_model.IMU(imu_idx).to_array()[:3, :3]
-
-        angle_indices = range(
-            segment.getFirstDofIndexInGeneralizedCoordinates(biorbd_model) + segment.nbDofTrans(),
-            segment.getLastDofIndexInGeneralizedCoordinates(biorbd_model) + 1,
-        )
-        angle_sequence = segment.seqR().to_string()
-
-        projected_imu = np.ndarray((frame_count, 3, 3))
-        for time_index in range(frame_count):
-            # Use the previously placed IMU as basis for computing the base IMU. This assume the kinematics
-            # chain is declared with parent IMU before child IMU
-            base_imus_in_global = biorbd_model.IMU(q_recons[:, time_index], imu_idx).to_array()[:3, :3]
-            projected_imu[time_index, :, :] = local_imu.T @ (base_imus_in_global.T @ targets[imu][:3, :3, time_index])
-
-            scipy.spatial.transform.Rotation.from_matrix(
-                local_imu.T @ (base_imus_in_global.T @ targets[imu][:3, :3, time_index])
-            ).as_euler("xyz", degrees=True).T
-        q_recons[angle_indices, :] = (
-            scipy.spatial.transform.Rotation.from_matrix(projected_imu).as_euler(angle_sequence).T
-        )
-
-        # time_index = 0
-        # rts = biorbd_model.globalJCS(np.zeros(biorbd_model.nbQ()), 0).to_array()
-        # base_imus = biorbd_model.IMU(np.zeros(biorbd_model.nbQ()), imu_idx).to_array()[:3, :3]
-        # local_imus = biorbd_model.IMU(imu_idx).to_array()[:3, :3]
-
-        # scipy.spatial.transform.Rotation.from_matrix(base_imus).as_euler("xyz", degrees=True).T
-        # scipy.spatial.transform.Rotation.from_matrix(targets[imu_idx][:3, :3, time_index]).as_euler(
-        #     "xyz", degrees=True
-        # ).T
-        # scipy.spatial.transform.Rotation.from_matrix(base_imus.T @ targets[imu_idx][:3, :3, time_index]).as_euler("xyz", degrees=True).T
-        # scipy.spatial.transform.Rotation.from_matrix(local_imus @ (base_imus.T @ targets[imu_idx][:3, :3, time_index])).as_euler("xyz", degrees=True).T
-
-    return q_recons
-
-
 def _reconstruct_with_kalman(biorbd_model: biorbd.Model, targets: dict[str, np.ndarray]) -> np.ndarray:
     _logger.info("\t\tReconstruct with Kalman filter")
     frame_count = targets[list(targets.keys())[0]].shape[-1]
@@ -99,39 +47,6 @@ def _reconstruct_with_kalman(biorbd_model: biorbd.Model, targets: dict[str, np.n
 
     rmse = np.sqrt(np.mean(defects**2))
     _logger.info(f"\t\t\tKalman RMSE: {rmse}")
-
-    _logger.info("\t\tReconstruction done")
-    return q_recons
-
-
-def _reconstruct_with_global_optimization(biorbd_model: biorbd.Model, targets: dict[str, np.ndarray]) -> np.ndarray:
-    _logger.info("\t\tReconstruct with global optimization")
-    frame_count = targets[list(targets.keys())[0]].shape[-1]
-
-    def objective_function(q: np.ndarray) -> float:
-        imus_model = np.hstack(
-            [imu.to_array()[:3, :3].T.reshape((-1,)) for imu in biorbd_model.IMU(q_recons[:, time_index])]
-        )
-        defects = target - imus_model
-        return np.linalg.norm(defects)
-
-    q_recons = np.ndarray((biorbd_model.nbQ(), frame_count))
-    q_init = np.zeros((biorbd_model.nbQ(),))
-    for time_index in range(frame_count):
-        if time_index % 200 == 0:
-            _logger.info(f"\t\t\tTime index: {time_index}..")
-
-        target = []
-        for segment in biorbd_model.segments():
-            name = segment.name().to_string()
-            if name in targets:
-                target.append(targets[name][:3, :3, time_index].T.reshape((-1,)))
-        target = np.hstack(target)
-
-        q_init = scipy.optimize.least_squares(objective_function, q_init).x
-        q_recons[:, time_index] = q_init
-        if time_index == 1:
-            break
 
     _logger.info("\t\tReconstruction done")
     return q_recons
@@ -196,11 +111,10 @@ class Model:
     _biomodel: biorbd.Model
     _imu_seq: str = "ZYX"
 
-    def reconstruct_kinematics(
-        self, trial_config: TrialConfig, methods: ReconstructMethods | list[ReconstructMethods], animate: bool = False
-    ) -> dict[str, np.ndarray]:
+    def reconstruct_kinematics(self, trial_config: TrialConfig, animate: bool = False) -> list[np.ndarray]:
         trial = Trial.from_trial_config(trial_config)
 
+        out: list[np.ndarray] = []
         axis_names = ["Roll", "Pitch", "Yaw"]
         for data in trial.data:
             # Convert Roll, Pitch, Yaw of IMUs to homogenous matrix (in the same order as the model)
@@ -212,27 +126,9 @@ class Model:
                 for imu in [imu.to_string() for imu in self._biomodel.IMUsNames()]
             }
 
-            if isinstance(methods, ReconstructMethods):
-                methods = [methods]
-
-            out = {}
-            if ReconstructMethods.NO_MODEL in methods:
-                out[ReconstructMethods.NO_MODEL] = _reconstruct_no_model(self._biomodel, targets)
-            if ReconstructMethods.KALMAN in methods:
-                out[ReconstructMethods.KALMAN] = _reconstruct_with_kalman(self._biomodel, targets)
-            if ReconstructMethods.GLOBAL_OPTIMIZATION in methods:
-                out[ReconstructMethods.GLOBAL_OPTIMIZATION] = _reconstruct_with_global_optimization(
-                    self._biomodel, targets
-                )
-
-            all_methods = list(out.keys())
-            for method_index, method1 in enumerate(all_methods[:-1]):
-                for method2 in all_methods[(method_index + 1) :]:
-                    mean_rmse = np.mean(np.sqrt(np.mean((out[method1] - out[method2]) ** 2, axis=0)))
-                    _logger.info(f"\t\tMean RMSE between {method1} and {method2} is: {mean_rmse}")
-
+            out.append(_reconstruct_with_kalman(self._biomodel, targets))
             if animate:
-                self.animate(out[ReconstructMethods.KALMAN], targets)
+                self.animate(out[-1], targets)
         return out
 
     @staticmethod

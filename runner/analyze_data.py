@@ -18,11 +18,6 @@ def main():
         # "Subject3",
         "Subject4",
     ]
-    reconstruct_methods = [
-        habmot.ReconstructMethods.NO_MODEL,
-        habmot.ReconstructMethods.KALMAN,
-        habmot.ReconstructMethods.GLOBAL_OPTIMIZATION,
-    ]
 
     # Load the config files
     configs: dict[str, habmot.Config] = {}
@@ -39,16 +34,12 @@ def main():
             show_static=False,
         )
 
-        # model.reconstruct_kinematics(trial_config=configs[subject].static, methods=reconstruct_methods, animate=True)
-
         trials: dict[str, habmot.Trial] = {}
         for key in configs[subject].trials:
             _logger.info(f"    Reconstruct trial {key}")
-            trials[key] = model.reconstruct_kinematics(
-                trial_config=configs[subject].trials[key], methods=reconstruct_methods, animate=True
-            )
+            trials[key] = model.reconstruct_kinematics(trial_config=configs[subject].trials[key], animate=True)
 
-        # TODO: Confirm with simple movement so the axes and right/left hand-side matrix are dealt with
+        # TODO save the trials in a file
 
 
 if __name__ == "__main__":
