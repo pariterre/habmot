@@ -16,7 +16,7 @@ def main():
     subjects = [
         # "Subject1",
         # "Subject3",
-        "Subject4",
+        # "Subject4",
     ]
 
     # Load the config files
@@ -31,13 +31,13 @@ def main():
             config=configs[subject],
             models_folder=models_folder,
             save_folder=results_folder / subject,
-            show_static=False,
+            show_static=True,
         )
 
         for key in configs[subject].trials:
             _logger.info(f"    Reconstruct trial {key}")
             model.reconstruct_kinematics(
-                trial_config=configs[subject].trials[key], animate=False, save_folder=results_folder / subject
+                trial_config=configs[subject].trials[key], animate=True, save_folder=results_folder / subject
             )
 
 

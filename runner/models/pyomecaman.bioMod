@@ -102,8 +102,13 @@ version    4
     // Segment
     segment    RightArm
         parent    Trunk
-        RT 0 -1.5 0 xyz 0.16479 -0.10658 0.30485
+        RT 0 -1.57 0 xyz 0.16479 -0.10658 0.30485
         rotations    xyz
+    endsegment
+
+    segment PostRightArm
+        parent RightArm
+        RT -0.2 0.1 -0.1 xyz 0 0 0
         mass    2.39085
         inertia
             0.06873    0.00000    0.00000
@@ -142,6 +147,11 @@ version    4
         parent    Trunk
         RT 0 1.5 0 xyz -0.16479 -0.10658 0.30485
         rotations    xyz
+    endsegment
+
+    segment PostLeftArm
+        parent LeftArm
+        RT -0.2 -0.1 0.1 xyz 0 0 0
         mass    2.39085
         inertia
             0.06873    0.00000    0.00000
