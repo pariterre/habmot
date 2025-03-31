@@ -15,6 +15,7 @@ class ImuConfig:
 
 @dataclass(frozen=True)
 class TrialConfig:
+    name: str
     files: dict[str, str]  # imu_name: file_path
     header: list[str]
     frames: npt.NDArray[np.int_]
@@ -309,6 +310,7 @@ class Config:
         # Get all the files in the subject folder
         subject_folder = Path(subject_folder)
         static_trial_config = TrialConfig(
+            name="static",
             files={
                 key: _collapse_filepath(base_folder=subject_folder, filepath=file)
                 for key, file in config["data"]["static"]["files"].items()
@@ -320,6 +322,7 @@ class Config:
         # Get all the trial files in the subject folder
         trial_configs = {
             prefix: TrialConfig(
+                name=prefix,
                 files={
                     key: _collapse_filepath(base_folder=subject_folder, filepath=file)
                     for key, file in config["data"]["trials"]["files"][prefix].items()

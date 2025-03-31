@@ -111,12 +111,14 @@ class Model:
     _biomodel: biorbd.Model
     _imu_seq: str = "ZYX"
 
-    def reconstruct_kinematics(self, trial_config: TrialConfig, animate: bool = False) -> list[np.ndarray]:
+    def reconstruct_kinematics(
+        self, trial_config: TrialConfig, animate: bool = False, save_folder: str = None
+    ) -> list[np.ndarray]:
         trial = Trial.from_trial_config(trial_config)
 
         out: list[np.ndarray] = []
         axis_names = ["Roll", "Pitch", "Yaw"]
-        for data in trial.data:
+        for i, data in enumerate(trial.data):
             # Convert Roll, Pitch, Yaw of IMUs to homogenous matrix (in the same order as the model)
             targets: dict[str, np.ndarray] = {
                 imu: _to_homogenous_matrix(
@@ -126,9 +128,19 @@ class Model:
                 for imu in [imu.to_string() for imu in self._biomodel.IMUsNames()]
             }
 
-            out.append(_reconstruct_with_kalman(self._biomodel, targets))
+            all_q = _reconstruct_with_kalman(self._biomodel, targets)
+
             if animate:
-                self.animate(out[-1], targets)
+                self.animate(all_q, targets)
+
+            if save_folder is not None:
+                header = [name.to_string() for name in self._biomodel.nameDof()]
+                file_path = Path(save_folder) / f"{trial_config.name}_{i + 1}.csv"
+                to_write = all_q.T * 180 / np.pi
+                np.savetxt(file_path, to_write, delimiter=",", header=",".join(header), fmt="%.6f")
+                _logger.info(f"\t\tSave reconstructed data to {file_path}")
+
+            out.append(all_q)
         return out
 
     @staticmethod

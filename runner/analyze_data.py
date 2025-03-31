@@ -34,12 +34,11 @@ def main():
             show_static=False,
         )
 
-        trials: dict[str, habmot.Trial] = {}
         for key in configs[subject].trials:
             _logger.info(f"    Reconstruct trial {key}")
-            trials[key] = model.reconstruct_kinematics(trial_config=configs[subject].trials[key], animate=True)
-
-        # TODO save the trials in a file
+            model.reconstruct_kinematics(
+                trial_config=configs[subject].trials[key], animate=False, save_folder=results_folder / subject
+            )
 
 
 if __name__ == "__main__":
