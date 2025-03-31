@@ -135,8 +135,12 @@ class Model:
 
             if save_folder is not None:
                 header = [name.to_string() for name in self._biomodel.nameDof()]
+                multiplier = np.ones(len(header))
+                for name in header:
+                    if "Rot" in name:
+                        multiplier[header.index(name)] = 180 / np.pi
                 file_path = Path(save_folder) / f"{trial_config.name}_{i + 1}.csv"
-                to_write = all_q.T * 180 / np.pi
+                to_write = all_q.T * multiplier
                 np.savetxt(file_path, to_write, delimiter=",", header=",".join(header), fmt="%.6f")
                 _logger.info(f"\t\tSave reconstructed data to {file_path}")
 
