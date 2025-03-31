@@ -36,7 +36,7 @@ def main():
             config=configs[subject],
             models_folder=models_folder,
             save_folder=results_folder / subject,
-            show_static=True,
+            show_static=False,
         )
 
         # model.reconstruct_kinematics(trial_config=configs[subject].static, methods=reconstruct_methods, animate=True)

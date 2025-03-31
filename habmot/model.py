@@ -141,31 +141,49 @@ def _realign_vertical_rt(root_in_global: np.ndarray, reference_imu_in_global: np
     def best_vertical_rotation(angle: np.array) -> biobuddy.SegmentReal:
         root = scipy.spatial.transform.Rotation.from_euler("Z", angle[0]).as_matrix() @ root_in_global[:3, :3]
 
-        saggital_error = np.dot(root[:3, root_x], reference_imu_in_global[:3, imu_x]) - 1
-        frontal_error = np.dot(root[:3, root_y], reference_imu_in_global[:3, imu_y]) - 1
+        saggital_error = np.dot(root[:3, root_saggital], -reference_imu_in_global[:3, imu_saggital]) - 1
+        frontal_error = np.dot(root[:3, root_frontal], -reference_imu_in_global[:3, imu_frontal]) - 1
         return saggital_error**2 + frontal_error**2
 
     def find_axes_indices(matrix: np.ndarray) -> tuple[int, int, int]:
+        saggital_axis = None
+        frontal_axis = None
+        vertical_axis = None
+
         for index, _ in enumerate("xyz"):
-            if np.abs(np.dot(matrix[:3, index], np.array([0, 0, 1]))) > 0.9:
-                z_axis = index
-                x_axis = (z_axis + 1) % 3
-                y_axis = (z_axis + 2) % 3
-                return x_axis, y_axis, z_axis
-        raise ValueError("No vertical axis found")
+            if np.abs(np.dot(matrix[:3, index], np.array([1, 0, 0]))) > 0.85:
+                saggital_axis = index
+                break
+        if saggital_axis is None:
+            raise ValueError("No saggital axis found")
+
+        for index, _ in enumerate("xyz"):
+            if np.abs(np.dot(matrix[:3, index], np.array([0, 1, 0]))) > 0.85:
+                frontal_axis = index
+                break
+        if frontal_axis is None:
+            raise ValueError("No frontal axis found")
+
+        for index, _ in enumerate("xyz"):
+            if np.abs(np.dot(matrix[:3, index], np.array([0, 0, 1]))) > 0.85:
+                vertical_axis = index
+                break
+        if vertical_axis is None:
+            raise ValueError("No vertical axis found")
+
+        return saggital_axis, frontal_axis, vertical_axis
 
     # Find the axes of the matrices
-    root_x, root_y, root_z = find_axes_indices(root_in_global[:3, :3])
-    imu_x, imu_y, imu_z = find_axes_indices(reference_imu_in_global[:3, :3])
+    root_saggital, root_frontal, root_vertical = find_axes_indices(root_in_global[:3, :3])
+    imu_saggital, imu_frontal, imu_vertical = find_axes_indices(reference_imu_in_global[:3, :3])
 
-    # If the z-axis of a matrix is pointing down, flip the x-axis (effectively rotating the matrix 180 degrees)
-    if np.dot(root_in_global[:3, root_z], [0, 0, 1]) < 0:
+    # # If the z-axis of a matrix is pointing down, flip the x-axis (effectively rotating the matrix 180 degrees)
+    if np.dot(root_in_global[:3, root_vertical], [0, 0, 1]) < 0:
         root_in_global = root_in_global.copy()
-        root_in_global[:, root_x] *= -1
-    if np.dot(reference_imu_in_global[:3, imu_z], [0, 0, 1]) < 0:
+        root_in_global[:, root_saggital] *= -1
+    if np.dot(reference_imu_in_global[:3, imu_vertical], [0, 0, 1]) < 0:
         reference_imu_in_global = reference_imu_in_global.copy()
-        reference_imu_in_global[:, imu_x] *= -1
-    reference_imu_in_global[:, imu_y] *= -1
+        reference_imu_in_global[:, imu_saggital] *= -1
 
     value = scipy.optimize.minimize(best_vertical_rotation, 0).x[0]
     root_rt = np.eye(4)
@@ -176,6 +194,7 @@ def _realign_vertical_rt(root_in_global: np.ndarray, reference_imu_in_global: np
 @dataclass(frozen=True)
 class Model:
     _biomodel: biorbd.Model
+    _imu_seq: str = "ZYX"
 
     def reconstruct_kinematics(
         self, trial_config: TrialConfig, methods: ReconstructMethods | list[ReconstructMethods], animate: bool = False
@@ -186,8 +205,9 @@ class Model:
         for data in trial.data:
             # Convert Roll, Pitch, Yaw of IMUs to homogenous matrix (in the same order as the model)
             targets: dict[str, np.ndarray] = {
-                imu: _to_xsens_homogenous_matrix(
+                imu: _to_homogenous_matrix(
                     euler=data[imu][:, [axis_names.index(axis) for axis in trial_config.header if axis in axis_names]],
+                    seq=Model._imu_seq,
                 )
                 for imu in [imu.to_string() for imu in self._biomodel.IMUsNames()]
             }
@@ -234,14 +254,16 @@ class Model:
         root_segment = model.segments[0]
         root_segment_rt = root_segment.segment_coordinate_system.scs[:, :, 0]
         root_imu = biobuddy.utils.linear_algebra.mean_homogenous_matrix(
-            _to_xsens_homogenous_matrix(euler=static.concatenated_data[root_segment.name][:, data_indices])
+            _to_homogenous_matrix(
+                euler=static.concatenated_data[root_segment.name][:, data_indices], seq=Model._imu_seq
+            )
         )
         root_correction = _realign_vertical_rt(root_in_global=root_segment_rt, reference_imu_in_global=root_imu)
         root_segment.segment_coordinate_system.scs[:, :, 0] = root_correction @ root_segment_rt
         root_segment.segment_coordinate_system.is_in_global = False
 
         targets: dict[str, np.ndarray] = {
-            imu: _to_xsens_homogenous_matrix(euler=static.concatenated_data[imu][:, data_indices])
+            imu: _to_homogenous_matrix(euler=static.concatenated_data[imu][:, data_indices], seq=Model._imu_seq)
             for imu in static.concatenated_data.keys()
         }
 
@@ -280,7 +302,7 @@ class Model:
 def _animate(biorbd_model: biorbd.Model, q: np.ndarray = None, imu_targets: dict[str, np.ndarray] = None) -> None:
     import bioviz
 
-    b = bioviz.Viz(loaded_model=biorbd_model, show_imus=True)
+    b = bioviz.Viz(loaded_model=biorbd_model, show_imus=True, show_local_ref_frame=True)
     if q is not None:
         b.load_movement(q)
 
@@ -301,24 +323,3 @@ def _to_homogenous_matrix(euler: np.ndarray, seq: str) -> np.ndarray:
         "ijk->jki", scipy.spatial.transform.Rotation.from_euler(seq, euler, degrees=True).as_matrix()
     )
     return scs
-
-
-def _to_xsens_homogenous_matrix(euler: np.ndarray) -> np.ndarray:
-    seq = "ZYX"
-    euler = euler[:, [2, 1, 0]]
-    # euler[:, 0] = -euler[:, 0]
-    # euler[:, 1] = -euler[:, 1]
-
-    scs = np.repeat(np.eye(4)[:, :, None], euler.shape[0], axis=2)
-    scs[:3, :3, :] = np.einsum(
-        "ijk->jki", scipy.spatial.transform.Rotation.from_euler(seq, euler, degrees=True).as_matrix()
-    )
-
-    return scs
-
-    # CANDIDATES (Same direction)
-    # seq = "ZYX"
-    # euler = euler[:, [1, 0, 2]]
-    # # euler[:, 0] = -euler[:, 0]
-    # euler[:, 1] = -euler[:, 1]
-    # # euler[:, 2] = -euler[:, 2]
