@@ -112,13 +112,23 @@ class Model:
     _imu_seq: str = "ZYX"
 
     def reconstruct_kinematics(
-        self, trial_config: TrialConfig, animate: bool = False, save_folder: str = None
+        self,
+        trial_config: TrialConfig,
+        force_redo: bool = True,
+        animate: bool = False,
+        save_folder: str = None,
+        save_animation: bool = False,
     ) -> list[np.ndarray]:
         trial = Trial.from_trial_config(trial_config)
 
         out: list[np.ndarray] = []
         axis_names = ["Roll", "Pitch", "Yaw"]
         for i, data in enumerate(trial.data):
+            save_file_path = Path(save_folder) / f"{trial_config.name}_{i + 1}.csv" if save_folder else None
+            if not force_redo and save_file_path is not None and save_file_path.exists():
+                _logger.info(f"\t\tSkip trial {trial_config.name}_{i + 1} (already exists)")
+                continue
+
             # Convert Roll, Pitch, Yaw of IMUs to homogenous matrix (in the same order as the model)
             targets: dict[str, np.ndarray] = {
                 imu: _to_homogenous_matrix(
@@ -131,18 +141,35 @@ class Model:
             all_q = _reconstruct_with_kalman(self._biomodel, targets)
 
             if animate:
-                self.animate(all_q, targets)
+                self.animate(
+                    all_q,
+                    targets,
+                    save_path=Path(save_folder) / f"{trial_config.name}_{i + 1}.ogv" if save_animation else None,
+                )
 
             if save_folder is not None:
                 header = [name.to_string() for name in self._biomodel.nameDof()]
+                header += [name.to_string() + "_" + "XYZ"[i] for i in range(3) for name in self._biomodel.markerNames()]
+
                 multiplier = np.ones(len(header))
                 for name in header:
                     if "Rot" in name:
                         multiplier[header.index(name)] = 180 / np.pi
-                file_path = Path(save_folder) / f"{trial_config.name}_{i + 1}.csv"
-                to_write = all_q.T * multiplier
-                np.savetxt(file_path, to_write, delimiter=",", header=",".join(header), fmt="%.6f")
-                _logger.info(f"\t\tSave reconstructed data to {file_path}")
+
+                # Add the markers in the hip reference frame
+                hip_index = [segment.name().to_string() for segment in self._biomodel.segments()].index("Hip")
+                markers_in_hip = np.zeros((3 * len(self._biomodel.markerNames()), all_q.shape[1]))
+                for q_index, q in enumerate(all_q.T):
+                    hip_rt_T = self._biomodel.globalJCS(q, hip_index).transpose().to_array()
+                    marker = np.array(
+                        [np.concatenate((marker.to_array(), [1])) for marker in self._biomodel.markers(q)]
+                    ).T
+                    markers_in_hip[:, q_index] = (hip_rt_T @ marker)[:3, :].T.flatten()
+
+                data_to_write = np.hstack((all_q.T, markers_in_hip.T))
+                to_write = data_to_write * multiplier
+                np.savetxt(save_file_path, to_write, delimiter=",", header=",".join(header), fmt="%.6f")
+                _logger.info(f"\t\tSave reconstructed data to {save_file_path}")
 
             out.append(all_q)
         return out
@@ -207,20 +234,32 @@ class Model:
 
         return Model.from_biomod(file_path=save_path.as_posix())
 
-    def animate(self, q: np.ndarray, imu_targets: dict[str, np.ndarray] = None) -> None:
-        _animate(self._biomodel, q, imu_targets)
+    def animate(self, q: np.ndarray, imu_targets: dict[str, np.ndarray] = None, save_path: str = None) -> None:
+        _animate(biorbd_model=self._biomodel, q=q, imu_targets=imu_targets, save_path=save_path)
 
 
-def _animate(biorbd_model: biorbd.Model, q: np.ndarray = None, imu_targets: dict[str, np.ndarray] = None) -> None:
+def _animate(
+    biorbd_model: biorbd.Model, q: np.ndarray = None, imu_targets: dict[str, np.ndarray] = None, save_path: Path = None
+) -> None:
     import bioviz
 
     b = bioviz.Viz(loaded_model=biorbd_model, show_imus=True, show_local_ref_frame=True)
+    b.maximize()
     if q is not None:
-        b.load_movement(q)
+        b.load_movement(q, auto_start=True)
 
     if imu_targets is not None:
-        b.load_experimental_imus(imu_targets)
-    b.exec()
+        b.load_experimental_imus(imu_targets, auto_start=True)
+
+    if save_path is not None:
+        b.start_recording(save_path.as_posix())
+        b.add_frame()  # The first frame is not saved when using update()
+        for i in range(q.shape[1] - 2):
+            b.update()
+        b.stop_recording()
+        b.quit()
+    else:
+        b.exec()
 
 
 def _to_homogenous_matrix(euler: np.ndarray, seq: str) -> np.ndarray:

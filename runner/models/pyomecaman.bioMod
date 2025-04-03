@@ -1,7 +1,6 @@
 version    4
     
 
-
 // Informations about Hip segment
     // Segment
     segment   Hip
@@ -141,6 +140,11 @@ version    4
         mesh    0.09267    0.12714    -0.47113
     endsegment
 
+    marker RightWrist
+        parent PostRightArm
+        position 0.13229    0.12429    -0.49310
+    endmarker
+
 // Informations about LeftArm segment
     // Segment
     segment    LeftArm
@@ -184,6 +188,12 @@ version    4
         mesh    -0.09267    0.12714    -0.47113
     endsegment
 
+    marker LefttWrist
+        parent PostLeftArm
+        position -0.13229    0.12429    -0.49310
+    endmarker
+
+/*
 // Informations about RightThigh segment
     // Segment
     segment    RightThigh
@@ -271,6 +281,12 @@ version    4
         mesh    0.06379    0.09487    -0.01280
     endsegment
 
+    marker RightToe
+        parent RightFoot
+        position -0.00465    0.15809    0.00611
+    endmarker
+*/
+
 // Informations about LeftThigh segment
     // Segment
     segment    LeftThigh
@@ -357,3 +373,8 @@ version    4
         mesh    -0.01175    -0.03816    -0.02629
         mesh    -0.06379    0.09487    -0.01280
     endsegment
+
+    marker LeftToe
+        parent LeftFoot
+        position 0.00465    0.15809    0.00611
+    endmarker

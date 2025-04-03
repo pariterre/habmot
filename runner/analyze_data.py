@@ -7,7 +7,6 @@ _logger = logging.getLogger(__name__)
 
 
 def main():
-    # TODO : Remove comments in biobuddy
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
     current_folder = Path(__file__).parent
@@ -16,6 +15,8 @@ def main():
     results_folder = current_folder / ".." / "results"
     subjects = [
         "Subject1",
+        "Subject2",
+        "Subject3",
     ]
 
     # Load the config files
@@ -36,7 +37,11 @@ def main():
         for key in configs[subject].trials:
             _logger.info(f"    Reconstruct trial {key}")
             model.reconstruct_kinematics(
-                trial_config=configs[subject].trials[key], animate=False, save_folder=results_folder / subject
+                trial_config=configs[subject].trials[key],
+                force_redo=False,
+                animate=True,
+                save_folder=results_folder / subject,
+                save_animation=True,
             )
 
 
